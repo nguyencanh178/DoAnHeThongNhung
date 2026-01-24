@@ -1,33 +1,103 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
-  <title>ESP32 BLE LED Control</title>
+  <meta charset="UTF-8">
+  <title>ESP32 BLE - Điều khiển đèn</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Segoe UI", sans-serif;
+      background-image: url("background.jpg"); /* Ảnh nền của bạn */
+      background-size: cover;
+      background-position: center;
+      color: white;
+      text-align: center;
+    }
+
+    .container {
+      background: rgba(0, 0, 0, 0.5);
+      margin: 50px auto;
+      padding: 30px;
+      border-radius: 15px;
+      max-width: 400px;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    button {
+      width: 120px;
+      height: 50px;
+      margin: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .on-btn {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    .on-btn:hover {
+      background-color: #45a049;
+    }
+
+    .off-btn {
+      background-color: #f44336;
+      color: white;
+    }
+
+    .off-btn:hover {
+      background-color: #e53935;
+    }
+
+    #connect-btn {
+      background-color: #2196F3;
+      color: white;
+      margin-bottom: 20px;
+    }
+
+    #connect-btn:hover {
+      background-color: #1976D2;
+    }
+  </style>
 </head>
 <body>
-  <h2>BLE Điều khiển đèn ESP32</h2>
-  <button onclick="connectBLE()">🔗 Kết nối ESP32</button>
-  <hr>
-  <div>
-    <h3>LED1 (GPIO25)</h3>
-    <button onclick="sendCommand('LED1_ON')">Bật</button>
-    <button onclick="sendCommand('LED1_OFF')">Tắt</button>
-  </div>
-  <div>
-    <h3>LED2 (GPIO26)</h3>
-    <button onclick="sendCommand('LED2_ON')">Bật</button>
-    <button onclick="sendCommand('LED2_OFF')">Tắt</button>
-  </div>
-  <div>
-    <h3>LED3 (GPIO27)</h3>
-    <button onclick="sendCommand('LED3_ON')">Bật</button>
-    <button onclick="sendCommand('LED3_OFF')">Tắt</button>
+  <div class="container">
+    <h1>Điều khiển quạt thông minh</h1>
+
+    <button id="connect-btn" onclick="connectBLE()">🔗 Kết nối ESP32</button>
+
+    <div>
+      <h2>MỨC 1</h2>
+      <button class="on-btn" onclick="sendCommand('LED1_ON')">BẬT</button>
+      <button class="off-btn" onclick="sendCommand('LED1_OFF')">TẮT</button>
+    </div>
+
+    <div>
+      <h2>MỨC 2</h2>
+      <button class="on-btn" onclick="sendCommand('LED2_ON')">BẬT</button>
+      <button class="off-btn" onclick="sendCommand('LED2_OFF')">TẮT</button>
+    </div>
+
+    <div>
+      <h2>MỨC 3</h2>
+      <button class="on-btn" onclick="sendCommand('LED3_ON')">BẬT</button>
+      <button class="off-btn" onclick="sendCommand('LED3_OFF')">TẮT</button>
+    </div>
   </div>
 
   <script>
     let bleDevice, bleCharacteristic;
     const SERVICE_UUID = "d82ce91a-23c7-454a-8f48-3c799707c217";
     const CHARACTERISTIC_UUID = "ff02a2fe-332e-4a54-a270-ccb8d9ee50dc";
-    
+
     async function connectBLE() {
       try {
         bleDevice = await navigator.bluetooth.requestDevice({
@@ -53,7 +123,7 @@
 
       const encoder = new TextEncoder();
       await bleCharacteristic.writeValue(encoder.encode(command));
-      console.log("Sent command: " + command);
+      console.log("Đã gửi: " + command);
     }
   </script>
 </body>
