@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ESP32 BLE LED Control</title>
+</head>
+<body>
+  <h2>BLE Điều khiển đèn ESP32</h2>
+  <button onclick="connectBLE()">🔗 Kết nối ESP32</button>
+  <hr>
+  <div>
+    <h3>LED1 (GPIO25)</h3>
+    <button onclick="sendCommand('LED1_ON')">Bật</button>
+    <button onclick="sendCommand('LED1_OFF')">Tắt</button>
+  </div>
+  <div>
+    <h3>LED2 (GPIO26)</h3>
+    <button onclick="sendCommand('LED2_ON')">Bật</button>
+    <button onclick="sendCommand('LED2_OFF')">Tắt</button>
+  </div>
+  <div>
+    <h3>LED3 (GPIO27)</h3>
+    <button onclick="sendCommand('LED3_ON')">Bật</button>
+    <button onclick="sendCommand('LED3_OFF')">Tắt</button>
+  </div>
+
+  <script>
+    let bleDevice, bleCharacteristic;
+    const SERVICE_UUID = "12345678-1234-1234-1234-1234567890ab";
+    const CHARACTERISTIC_UUID = "abcd1234-ab12-cd34-ef56-1234567890ab";
+
+    async function connectBLE() {
+      try {
+        bleDevice = await navigator.bluetooth.requestDevice({
+          filters: [{ name: "ESP32_BLE_Control" }],
+          optionalServices: [SERVICE_UUID]
+        });
+
+        const server = await bleDevice.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+        alert("✅ Đã kết nối ESP32!");
+      } catch (error) {
+        alert("❌ Lỗi kết nối BLE: " + error);
+      }
+    }
+
+    async function sendCommand(command) {
+      if (!bleCharacteristic) {
+        alert("⚠️ Chưa kết nối thiết bị!");
+        return;
+      }
+
+      const encoder = new TextEncoder();
+      await bleCharacteristic.writeValue(encoder.encode(command));
+      console.log("Sent command: " + command);
+    }
+  </script>
+</body>
+</html>
