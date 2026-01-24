@@ -8,15 +8,16 @@
       margin: 0;
       padding: 0;
       font-family: "Segoe UI", sans-serif;
-      background-image: url("background.jpg"); /* Ảnh nền của bạn */
+      background-image: url("anh-truong.jpg");
       background-size: cover;
       background-position: center;
+      background-repeat: no-repeat;
       color: white;
       text-align: center;
     }
 
     .container {
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.6);
       margin: 50px auto;
       padding: 30px;
       border-radius: 15px;
@@ -70,25 +71,25 @@
 </head>
 <body>
   <div class="container">
-    <h1>Điều khiển quạt thông minh</h1>
+    <h1>ESP32 BLE Điều khiển đèn</h1>
 
     <button id="connect-btn" onclick="connectBLE()">🔗 Kết nối ESP32</button>
 
     <div>
-      <h2>MỨC 1</h2>
-      <button class="on-btn" onclick="sendCommand('LED1_ON')">BẬT</button>
+      <h2>LED 1 (GPIO25)</h2>
+      <button class="on-btn" onclick="turnOnOnly('LED1_ON')">BẬT</button>
       <button class="off-btn" onclick="sendCommand('LED1_OFF')">TẮT</button>
     </div>
 
     <div>
-      <h2>MỨC 2</h2>
-      <button class="on-btn" onclick="sendCommand('LED2_ON')">BẬT</button>
+      <h2>LED 2 (GPIO26)</h2>
+      <button class="on-btn" onclick="turnOnOnly('LED2_ON')">BẬT</button>
       <button class="off-btn" onclick="sendCommand('LED2_OFF')">TẮT</button>
     </div>
 
     <div>
-      <h2>MỨC 3</h2>
-      <button class="on-btn" onclick="sendCommand('LED3_ON')">BẬT</button>
+      <h2>LED 3 (GPIO27)</h2>
+      <button class="on-btn" onclick="turnOnOnly('LED3_ON')">BẬT</button>
       <button class="off-btn" onclick="sendCommand('LED3_OFF')">TẮT</button>
     </div>
   </div>
@@ -109,21 +110,26 @@
         const service = await server.getPrimaryService(SERVICE_UUID);
         bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
 
-        alert("✅ Đã kết nối ESP32!");
+        alert("Đã kết nối ESP32 BLE!");
       } catch (error) {
-        alert("❌ Lỗi kết nối BLE: " + error);
+        alert("Lỗi kết nối BLE: " + error);
       }
     }
 
     async function sendCommand(command) {
       if (!bleCharacteristic) {
-        alert("⚠️ Chưa kết nối thiết bị!");
+        alert("Chưa kết nối ESP32!");
         return;
       }
 
       const encoder = new TextEncoder();
       await bleCharacteristic.writeValue(encoder.encode(command));
-      console.log("Đã gửi: " + command);
+      console.log("Gửi lệnh:", command);
+    }
+
+    // Gửi lệnh BẬT và đảm bảo chỉ có 1 LED sáng
+    function turnOnOnly(command) {
+      sendCommand(command);
     }
   </script>
 </body>
