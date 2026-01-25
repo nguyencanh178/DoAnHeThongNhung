@@ -2,13 +2,13 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>ESP32 BLE - Điều khiển đèn</title>
+  <title>Điều khiển Relay qua BLE</title>
   <style>
     body {
       margin: 0;
       padding: 0;
       font-family: "Segoe UI", sans-serif;
-      background-image: url("anh-truong.jpg");
+      background-image: url("background.jpg");
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -71,38 +71,40 @@
 </head>
 <body>
   <div class="container">
-    <h1>ESP32 BLE Điều khiển đèn</h1>
+    <h1>⚡️ ESP32 BLE Điều khiển Relay</h1>
 
     <button id="connect-btn" onclick="connectBLE()">🔗 Kết nối ESP32</button>
 
     <div>
-      <h2>LED 1 (GPIO25)</h2>
-      <button class="on-btn" onclick="turnOnOnly('LED1_ON')">BẬT</button>
-      <button class="off-btn" onclick="sendCommand('LED1_OFF')">TẮT</button>
+      <h2>Relay 1 (GPIO25)</h2>
+      <button class="on-btn" onclick="turnOnOnly('RELAY1_ON')">BẬT</button>
+      <button class="off-btn" onclick="sendCommand('RELAY1_OFF')">TẮT</button>
     </div>
 
     <div>
-      <h2>LED 2 (GPIO26)</h2>
-      <button class="on-btn" onclick="turnOnOnly('LED2_ON')">BẬT</button>
-      <button class="off-btn" onclick="sendCommand('LED2_OFF')">TẮT</button>
+      <h2>Relay 2 (GPIO26)</h2>
+      <button class="on-btn" onclick="turnOnOnly('RELAY2_ON')">BẬT</button>
+      <button class="off-btn" onclick="sendCommand('RELAY2_OFF')">TẮT</button>
     </div>
 
     <div>
-      <h2>LED 3 (GPIO27)</h2>
-      <button class="on-btn" onclick="turnOnOnly('LED3_ON')">BẬT</button>
-      <button class="off-btn" onclick="sendCommand('LED3_OFF')">TẮT</button>
+      <h2>Relay 3 (GPIO27)</h2>
+      <button class="on-btn" onclick="turnOnOnly('RELAY3_ON')">BẬT</button>
+      <button class="off-btn" onclick="sendCommand('RELAY3_OFF')">TẮT</button>
     </div>
   </div>
 
   <script>
     let bleDevice, bleCharacteristic;
+
+    // UUID giống với code ESP32 của bạn
     const SERVICE_UUID = "d82ce91a-23c7-454a-8f48-3c799707c217";
     const CHARACTERISTIC_UUID = "ff02a2fe-332e-4a54-a270-ccb8d9ee50dc";
 
     async function connectBLE() {
       try {
         bleDevice = await navigator.bluetooth.requestDevice({
-          filters: [{ name: "ESP32_BLE_Control" }],
+          filters: [{ name: "ESP32_BLE_Relay" }],
           optionalServices: [SERVICE_UUID]
         });
 
@@ -110,24 +112,24 @@
         const service = await server.getPrimaryService(SERVICE_UUID);
         bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
 
-        alert("Đã kết nối ESP32 BLE!");
+        alert("✅ Đã kết nối ESP32 thành công!");
       } catch (error) {
-        alert("Lỗi kết nối BLE: " + error);
+        alert("❌ Lỗi kết nối BLE: " + error);
       }
     }
 
     async function sendCommand(command) {
       if (!bleCharacteristic) {
-        alert("Chưa kết nối ESP32!");
+        alert("⚠️ Chưa kết nối ESP32!");
         return;
       }
 
       const encoder = new TextEncoder();
       await bleCharacteristic.writeValue(encoder.encode(command));
-      console.log("Gửi lệnh:", command);
+      console.log("📤 Đã gửi:", command);
     }
 
-    // Gửi lệnh BẬT và đảm bảo chỉ có 1 LED sáng
+    // Đảm bảo chỉ 1 relay bật tại 1 thời điểm
     function turnOnOnly(command) {
       sendCommand(command);
     }
