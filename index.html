@@ -112,21 +112,21 @@
         const service = await server.getPrimaryService(SERVICE_UUID);
         bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
 
-        alert("✅ Đã kết nối ESP32 thành công!");
+        alert("Đã kết nối thành công!");
       } catch (error) {
-        alert("❌ Lỗi kết nối BLE: " + error);
+        alert("Lỗi kết nối: " + error);
       }
     }
 
     async function sendCommand(command) {
       if (!bleCharacteristic) {
-        alert("⚠️ Chưa kết nối ESP32!");
+        alert("Chưa kết nối");
         return;
       }
 
       const encoder = new TextEncoder();
       await bleCharacteristic.writeValue(encoder.encode(command));
-      console.log("📤 Đã gửi:", command);
+      console.log("Đã gửi:", command);
     }
 
     // Đảm bảo chỉ 1 relay bật tại 1 thời điểm
