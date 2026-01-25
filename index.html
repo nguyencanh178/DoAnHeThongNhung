@@ -150,8 +150,7 @@
 
     async function turnOffAll() {
       await sendCommand("RELAY_ALL_OFF");
-      
-      // Backup: tắt từng relay với delay nếu lệnh trên không hoạt động
+
       await new Promise(resolve => setTimeout(resolve, 50));
       await sendCommand("RELAY1_OFF");
       await new Promise(resolve => setTimeout(resolve, 50));
