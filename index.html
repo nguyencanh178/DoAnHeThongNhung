@@ -29,15 +29,16 @@
     }
 
     button {
-      width: 120px;
+      width: 140px;
       height: 50px;
-      margin: 10px;
+      margin: 10px auto;
       font-size: 16px;
       font-weight: bold;
       border: none;
       border-radius: 10px;
       cursor: pointer;
       transition: 0.3s;
+      display: block;
     }
 
     .on-btn {
@@ -61,11 +62,22 @@
     #connect-btn {
       background-color: #2196F3;
       color: white;
-      margin-bottom: 20px;
+      margin-bottom: 30px;
     }
 
     #connect-btn:hover {
       background-color: #1976D2;
+    }
+
+    .section {
+      margin: 25px 0;
+    }
+
+    hr {
+      border: none;
+      height: 1px;
+      background-color: #555;
+      margin: 20px 0;
     }
   </style>
 </head>
@@ -75,29 +87,32 @@
 
     <button id="connect-btn" onclick="connectBLE()">Kết nối Bluetooth</button>
 
-    <div>
+    <div class="section">
       <h2>Mức 1</h2>
       <button class="on-btn" onclick="turnOnOnly('RELAY1_ON')">BẬT</button>
-      <button class="off-btn" onclick="sendCommand('RELAY1_OFF')">TẮT</button>
     </div>
 
-    <div>
+    <div class="section">
       <h2>Mức 2</h2>
       <button class="on-btn" onclick="turnOnOnly('RELAY2_ON')">BẬT</button>
-      <button class="off-btn" onclick="sendCommand('RELAY2_OFF')">TẮT</button>
     </div>
 
-    <div>
+    <div class="section">
       <h2>Mức 3</h2>
       <button class="on-btn" onclick="turnOnOnly('RELAY3_ON')">BẬT</button>
-      <button class="off-btn" onclick="sendCommand('RELAY3_OFF')">TẮT</button>
+    </div>
+
+    <hr>
+
+    <div class="section">
+      <h2>TẮT TOÀN BỘ</h2>
+      <button class="off-btn" onclick="turnOffAll()">TẮT TOÀN BỘ</button>
     </div>
   </div>
 
   <script>
     let bleDevice, bleCharacteristic;
 
-    // UUID giống với code ESP32 của bạn
     const SERVICE_UUID = "d82ce91a-23c7-454a-8f48-3c799707c217";
     const CHARACTERISTIC_UUID = "ff02a2fe-332e-4a54-a270-ccb8d9ee50dc";
 
@@ -129,9 +144,14 @@
       console.log("Đã gửi:", command);
     }
 
-    // Đảm bảo chỉ 1 relay bật tại 1 thời điểm
     function turnOnOnly(command) {
       sendCommand(command);
+    }
+
+    function turnOffAll() {
+      sendCommand("RELAY1_OFF");
+      sendCommand("RELAY2_OFF");
+      sendCommand("RELAY3_OFF");
     }
   </script>
 </body>
