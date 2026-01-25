@@ -148,10 +148,12 @@
       sendCommand(command);
     }
 
-    function turnOffAll() {
-      sendCommand("RELAY1_OFF");
-      sendCommand("RELAY2_OFF");
-      sendCommand("RELAY3_OFF");
+    async function turnOffAll() {
+      await sendCommand("RELAY1_OFF");
+      await new Promise(resolve => setTimeout(resolve, 100)); // Chờ 100ms
+      await sendCommand("RELAY2_OFF");
+      await new Promise(resolve => setTimeout(resolve, 100)); // Chờ 100ms
+      await sendCommand("RELAY3_OFF");
     }
   </script>
 </body>
