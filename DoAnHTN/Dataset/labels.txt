@@ -1,0 +1,6 @@
+stop
+swing
+turn_off
+turn_on_level_one
+turn_on_level_three
+turn_on_level_two

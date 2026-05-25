@@ -1,0 +1,4 @@
+stop
+swing
+turn_off
+turn_on

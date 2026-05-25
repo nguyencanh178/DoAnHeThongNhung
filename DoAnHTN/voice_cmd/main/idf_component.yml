@@ -1,0 +1,6 @@
+dependencies:
+  espressif/esp-tflite-micro: "*"
+  espressif/esp-sr: "*"
+  espressif/esp-dsp: "*"
+  idf:
+    version: ">=5.0"

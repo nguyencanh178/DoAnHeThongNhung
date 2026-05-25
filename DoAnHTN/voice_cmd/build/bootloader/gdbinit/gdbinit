@@ -1,0 +1,2 @@
+source C:/Espressif/frameworks/voice_tflite_idf553/voice_cmd/build/bootloader/gdbinit/symbols
+source C:/Espressif/frameworks/voice_tflite_idf553/voice_cmd/build/bootloader/gdbinit/connect
