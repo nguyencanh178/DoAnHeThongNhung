@@ -574,11 +574,6 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Espressif/frameworks/voice_tflite_idf553/voice_cmd/build/esp-idf/espressif__esp-sr/cmake_install.cmake")
-endif()
-
-if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  # Include the install script for the subdirectory.
   include("C:/Espressif/frameworks/voice_tflite_idf553/voice_cmd/build/esp-idf/espressif__esp-nn/cmake_install.cmake")
 endif()
 
@@ -589,6 +584,31 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
+  include("C:/Espressif/frameworks/voice_tflite_idf553/voice_cmd/build/esp-idf/espressif__esp-sr/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("C:/Espressif/frameworks/voice_tflite_idf553/voice_cmd/build/esp-idf/dht/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("C:/Espressif/frameworks/voice_tflite_idf553/voice_cmd/build/esp-idf/ds3231/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("C:/Espressif/frameworks/voice_tflite_idf553/voice_cmd/build/esp-idf/st7789/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
   include("C:/Espressif/frameworks/voice_tflite_idf553/voice_cmd/build/esp-idf/main/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("C:/Espressif/frameworks/voice_tflite_idf553/voice_cmd/build/esp-idf/ILI9225/cmake_install.cmake")
 endif()
 

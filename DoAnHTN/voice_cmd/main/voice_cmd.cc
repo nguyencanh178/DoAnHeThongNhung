@@ -20,6 +20,11 @@
 #include "driver/gpio.h"
 
 #include "esp_err.h"
+#include "esp_log.h"
+
+#include "dht.h"
+#include "ds3231.h"
+#include "st7789.h"
 #include "esp_heap_caps.h"
 #include "esp_task_wdt.h"
 
@@ -49,6 +54,14 @@
 #define STAGE2_MARGIN_THRESHOLD 0.12f
 
 #define STATUS_LED_GPIO GPIO_NUM_13
+
+#define FAN_SPEED1_GPIO   GPIO_NUM_5
+#define FAN_SPEED2_GPIO   GPIO_NUM_6
+#define FAN_SPEED3_GPIO   GPIO_NUM_7
+#define FAN_SWING_GPIO    GPIO_NUM_4
+
+#define RELAY_ON   1
+#define RELAY_OFF  0
 
 extern const unsigned char stage1_model_tflite[];
 extern const unsigned int stage1_model_tflite_len;
@@ -95,6 +108,10 @@ static int feed_channel = 0;
 static SemaphoreHandle_t ai_sem = NULL;
 static QueueHandle_t cmd_queue = NULL;
 
+static const char *TAG = "VOICE_CMD_APP";
+static bool g_swing_enabled = false;
+static st7789_t lcd;
+
 static volatile bool wake_active = false;
 static volatile bool capturing_command = false;
 static volatile bool ai_busy = false;
@@ -114,6 +131,219 @@ static const char *stage2_labels[3] = {
     "level_two",
     "level_three"
 };
+
+static void fan_apply_swing(void)
+{
+    gpio_set_level(FAN_SWING_GPIO, g_swing_enabled ? RELAY_ON : RELAY_OFF);
+}
+
+static void fan_gpio_init(void)
+{
+    gpio_config_t io_conf = {};
+    io_conf.pin_bit_mask =
+        (1ULL << FAN_SPEED1_GPIO) |
+        (1ULL << FAN_SPEED2_GPIO) |
+        (1ULL << FAN_SPEED3_GPIO) |
+        (1ULL << FAN_SWING_GPIO);
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+
+    ESP_ERROR_CHECK(gpio_config(&io_conf));
+
+    gpio_set_level(FAN_SPEED1_GPIO, RELAY_OFF);
+    gpio_set_level(FAN_SPEED2_GPIO, RELAY_OFF);
+    gpio_set_level(FAN_SPEED3_GPIO, RELAY_OFF);
+    gpio_set_level(FAN_SWING_GPIO,  RELAY_OFF);
+
+    printf("Fan relay GPIO initialized\n");
+}
+
+static void fan_off(void)
+{
+    gpio_set_level(FAN_SPEED1_GPIO, RELAY_OFF);
+    gpio_set_level(FAN_SPEED2_GPIO, RELAY_OFF);
+    gpio_set_level(FAN_SPEED3_GPIO, RELAY_OFF);
+
+    g_swing_enabled = false;
+    fan_apply_swing();
+
+    printf("[FAN] OFF\n");
+}
+
+static void fan_set_speed(int level)
+{
+    gpio_set_level(FAN_SPEED1_GPIO, RELAY_OFF);
+    gpio_set_level(FAN_SPEED2_GPIO, RELAY_OFF);
+    gpio_set_level(FAN_SPEED3_GPIO, RELAY_OFF);
+
+    if (level == 1) {
+        gpio_set_level(FAN_SPEED1_GPIO, RELAY_ON);
+    } else if (level == 2) {
+        gpio_set_level(FAN_SPEED2_GPIO, RELAY_ON);
+    } else if (level == 3) {
+        gpio_set_level(FAN_SPEED3_GPIO, RELAY_ON);
+    } else {
+        printf("[FAN] Invalid speed level: %d\n", level);
+        return;
+    }
+
+    fan_apply_swing();
+    printf("[FAN] SPEED %d\n", level);
+}
+
+static void fan_swing_on(void)
+{
+    g_swing_enabled = true;
+    fan_apply_swing();
+    printf("[FAN] SWING ON\n");
+}
+
+static void fan_swing_off(void)
+{
+    g_swing_enabled = false;
+    fan_apply_swing();
+    printf("[FAN] SWING OFF\n");
+}
+
+/* ================= ST7789 + DHT22 + DS3231 UI ================= */
+
+static void draw_layout(void)
+{
+    st7789_fill_screen(&lcd, ST7789_COLOR_BLACK);
+
+    st7789_fill_rect(&lcd, 0, 0, lcd.width, 36, ST7789_COLOR_BLUE);
+    st7789_draw_fast_hline(&lcd, 0, 36, lcd.width, ST7789_COLOR_WHITE);
+    st7789_draw_fast_hline(&lcd, 0, 190, lcd.width, ST7789_COLOR_WHITE);
+
+    st7789_draw_string(&lcd, 8,   10, "TEMP:", ST7789_COLOR_WHITE, ST7789_COLOR_BLUE, 2);
+    st7789_draw_string(&lcd, 170, 10, "HUM:",  ST7789_COLOR_WHITE, ST7789_COLOR_BLUE, 2);
+    st7789_draw_string(&lcd, 10, 205, "DATE:", ST7789_COLOR_YELLOW, ST7789_COLOR_BLACK, 2);
+}
+
+static void update_top_bar(float temp, float hum)
+{
+    char temp_buf[24];
+    char hum_buf[24];
+
+    snprintf(temp_buf, sizeof(temp_buf), "%.1fC  ", temp);
+    snprintf(hum_buf, sizeof(hum_buf), "%.1f%%   ", hum);
+
+    st7789_fill_rect(&lcd, 70,  6, 80, 24, ST7789_COLOR_BLUE);
+    st7789_fill_rect(&lcd, 225, 6, 80, 24, ST7789_COLOR_BLUE);
+
+    st7789_draw_string(&lcd, 70,  10, temp_buf, ST7789_COLOR_YELLOW, ST7789_COLOR_BLUE, 2);
+    st7789_draw_string(&lcd, 225, 10, hum_buf,  ST7789_COLOR_CYAN,   ST7789_COLOR_BLUE, 2);
+}
+
+static void update_time_center(uint8_t hour, uint8_t minute)
+{
+    char time_buf[16];
+    snprintf(time_buf, sizeof(time_buf), "%02d:%02d", hour, minute);
+
+    st7789_fill_rect(&lcd, 35, 75, 250, 80, ST7789_COLOR_BLACK);
+    st7789_draw_string(&lcd, 90, 90, time_buf, ST7789_COLOR_GREEN, ST7789_COLOR_BLACK, 5);
+}
+
+static void update_date_bottom(uint8_t date, uint8_t month, uint16_t year)
+{
+    char date_buf[24];
+    snprintf(date_buf, sizeof(date_buf), "%02d/%02d/%04d", date, month, year);
+
+    st7789_fill_rect(&lcd, 90, 202, 180, 24, ST7789_COLOR_BLACK);
+    st7789_draw_string(&lcd, 90, 205, date_buf, ST7789_COLOR_WHITE, ST7789_COLOR_BLACK, 2);
+}
+
+static void show_error_bar(const char *msg)
+{
+    st7789_fill_rect(&lcd, 0, 0, lcd.width, 36, ST7789_COLOR_BLUE);
+    st7789_draw_fast_hline(&lcd, 0, 36, lcd.width, ST7789_COLOR_WHITE);
+    st7789_draw_string(&lcd, 10, 10, msg, ST7789_COLOR_RED, ST7789_COLOR_BLUE, 2);
+}
+
+static void display_task(void *pvParameters)
+{
+    esp_err_t ret;
+
+    st7789_config_t lcd_cfg = {
+        .spi_host = SPI2_HOST,
+        .pin_mosi = GPIO_NUM_16,
+        .pin_sclk = GPIO_NUM_15,
+        .pin_cs   = GPIO_NUM_46,
+        .pin_dc   = GPIO_NUM_18,
+        .pin_rst  = GPIO_NUM_17,
+        .pin_miso = -1,
+        .pin_bl   = -1,
+        .width    = 240,
+        .height   = 320,
+        .x_offset = 0,
+        .y_offset = 0,
+        .clk_hz   = 20000000,
+        .swap_xy  = false,
+        .mirror_x = false,
+        .mirror_y = false,
+        .rgb_order = false,
+        .rotation = 1
+    };
+
+    ret = st7789_init(&lcd, &lcd_cfg);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "st7789_init failed: %s", esp_err_to_name(ret));
+        vTaskDelete(NULL);
+        return;
+    }
+
+    draw_layout();
+
+    dht_config_t dht_cfg = {
+        .pin = GPIO_NUM_14,
+        .type = DHT_TYPE_DHT22
+    };
+
+    ret = dht_init(&dht_cfg);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "dht_init failed: %s", esp_err_to_name(ret));
+        show_error_bar("DHT INIT ERROR");
+    }
+
+    ds3231_config_t rtc_cfg = {
+        .port = I2C_NUM_0,
+        .sda_pin = GPIO_NUM_8,
+        .scl_pin = GPIO_NUM_9,
+        .clk_speed_hz = 100000,
+        .pullup_en = true
+    };
+
+    ret = ds3231_init(&rtc_cfg);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "ds3231_init failed: %s", esp_err_to_name(ret));
+        show_error_bar("RTC INIT ERROR");
+    }
+
+    while (1) {
+        dht_data_t dht_data;
+        if (dht_read(&dht_data) == ESP_OK) {
+            update_top_bar(dht_data.temperature, dht_data.humidity);
+            ESP_LOGI(TAG, "DHT22: %.1f C | %.1f %%", dht_data.temperature, dht_data.humidity);
+        } else {
+            ESP_LOGW(TAG, "dht_read failed");
+        }
+
+        ds3231_time_t now;
+        if (ds3231_get_time(&now) == ESP_OK) {
+            update_time_center(now.hour, now.minute);
+            update_date_bottom(now.date, now.month, now.year);
+            ESP_LOGI(TAG, "%02d:%02d:%02d  %02d/%02d/%04d",
+                     now.hour, now.minute, now.second,
+                     now.date, now.month, now.year);
+        } else {
+            ESP_LOGW(TAG, "RTC read failed");
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(2000));
+    }
+}
 
 static void stop_here(const char *msg)
 {
@@ -148,32 +378,38 @@ static void execute_command(int cmd, float score)
         break;
 
         case CMD_STOP:
-            printf("[EXEC] STOP | score=%.4f\n", score);
+            printf("[EXEC] STOP/SWING OFF | score=%.4f\n", score);
+            fan_swing_off();
             gpio_set_level(STATUS_LED_GPIO, 0);
         break;
 
         case CMD_SWING:
             printf("[EXEC] SWING | score=%.4f\n", score);
+            fan_swing_on();
             gpio_set_level(STATUS_LED_GPIO, 0);
         break;
 
         case CMD_TURN_OFF:
             printf("[EXEC] TURN OFF | score=%.4f\n", score);
+            fan_off();
             gpio_set_level(STATUS_LED_GPIO, 0);
         break;
 
         case CMD_LEVEL_1:
             printf("[EXEC] TURN ON LEVEL 1 | score=%.4f\n", score);
+            fan_set_speed(1);
             gpio_set_level(STATUS_LED_GPIO, 0);
         break;
 
         case CMD_LEVEL_2:
             printf("[EXEC] TURN ON LEVEL 2 | score=%.4f\n", score);
+            fan_set_speed(2);
             gpio_set_level(STATUS_LED_GPIO, 0);
         break;
 
         case CMD_LEVEL_3:
             printf("[EXEC] TURN ON LEVEL 3 | score=%.4f\n", score);
+            fan_set_speed(3);
             gpio_set_level(STATUS_LED_GPIO, 0);
         break;
 
@@ -714,7 +950,8 @@ static void ai_task(void *arg)
 
 extern "C" void app_main(void)
 {
-    printf("I2S + AFE + WakeNet + TFLite 2-Stage Voice Command SAFE\n");
+    printf("I2S + AFE + WakeNet + TFLite 2-Stage Voice Command + Sensors + Fan Relay\n");
+    esp_log_level_set("gpio", ESP_LOG_WARN);
     print_heap("boot");
 
     esp_task_wdt_deinit();
@@ -727,6 +964,9 @@ extern "C" void app_main(void)
     if (!cmd_queue) stop_here("Command queue create failed");
 
     init_gpio();
+    fan_gpio_init();
+    fan_off();
+
     alloc_buffers();
     init_i2s_mic();
     init_sr_models();
@@ -737,9 +977,10 @@ extern "C" void app_main(void)
     BaseType_t ok2 = xTaskCreatePinnedToCore(afe_fetch_task, "afe_fetch_task", 8192, NULL, 5, NULL, 1);
     BaseType_t ok3 = xTaskCreatePinnedToCore(ai_task, "ai_task", 16384, NULL, 1, NULL, 1);
     BaseType_t ok4 = xTaskCreatePinnedToCore(control_task, "control_task", 4096, NULL, 3, NULL, 0);
+    BaseType_t ok5 = xTaskCreatePinnedToCore(display_task, "display_task", 6144, NULL, 2, NULL, 1);
 
-    if (ok1 != pdPASS || ok2 != pdPASS || ok3 != pdPASS || ok4 != pdPASS) {
-        printf("Task create failed: feed=%d fetch=%d ai=%d ctrl=%d\n", ok1, ok2, ok3, ok4);
+    if (ok1 != pdPASS || ok2 != pdPASS || ok3 != pdPASS || ok4 != pdPASS || ok5 != pdPASS) {
+        printf("Task create failed: feed=%d fetch=%d ai=%d ctrl=%d display=%d\n", ok1, ok2, ok3, ok4, ok5);
         stop_here("Task create failed");
     }
 

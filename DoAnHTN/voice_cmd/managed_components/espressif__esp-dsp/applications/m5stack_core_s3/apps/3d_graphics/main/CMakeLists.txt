@@ -1,5 +1,5 @@
-idf_component_register(SRCS "3d_graphics_demo.cpp" 
-                            "init_display.c"
+idf_component_register(SRCS "init_display.c" "3d_graphics_demo.cpp" 
+                           
                             "../../../../azure_board_apps/graphics/3d_matrix/3d_matrix_data/esp_logo.c"
                             "../../../../azure_board_apps/graphics/3d_matrix/3d_matrix_data/esp_text.c" 
                             "../../../../azure_board_apps/graphics/3d_matrix/3d_matrix_data/image_to_3d_matrix.c"
